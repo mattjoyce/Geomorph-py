@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import os
 import random
-import Image, ImageEnhance
+import Image, ImageEnhance, ImageFilter
 import operator
-random.seed()
+#random.seed()
 
 class map:
     def __init__(self, stroutfile,sizex=1, sizey=1):
@@ -60,45 +60,47 @@ class map:
         else:
             im2=im1
               
-        return(self.equalize(im2))
+        #return(self.equalize(im2))
+        return im2
         
     
     
     def build(self):
+        im = Image.new("RGB", ((self.tx+1)*500, (self.ty+1)*500), "white")
         #top row
         im_tile=self.randtile(0)
-        self.im.paste(im_tile,(0,0))
+        im.paste(im_tile,(0,0))
         
         for i in range(0,self.tx):
             im_tile=self.randtile(1)
-            self.im.paste(im_tile,(250+(i*500),0))
+            im.paste(im_tile,(250+(i*500),0))
           
         im_tile=self.randtile(2)
-        self.im.paste(im_tile,(250+(self.tx*500),0))
+        im.paste(im_tile,(250+(self.tx*500),0))
         
         # mid rows
         for y in range(0,self.ty):
             im_tile=self.randtile(3)
-            self.im.paste(im_tile,(0,250+(y*500)))
+            im.paste(im_tile,(0,250+(y*500)))
             
             for x in range(0,self.tx):
                 im_tile=self.randtile(4)
-                self.im.paste(im_tile,(250+(x*500),250+(y*500)))
+                im.paste(im_tile,(250+(x*500),250+(y*500)))
         
             im_tile=self.randtile(5)
-            self.im.paste(im_tile,(250+(self.tx*500),250+(y*500)))
+            im.paste(im_tile,(250+(self.tx*500),250+(y*500)))
             
             
         #bottom
         im_tile=self.randtile(6)
-        self.im.paste(im_tile,(0,250+(self.ty*500)))
+        im.paste(im_tile,(0,250+(self.ty*500)))
         
         for i in range(0,self.tx):
             im_tile=self.randtile(7)
-            self.im.paste(im_tile,(250+(i*500),250+(self.ty*500)))
+            im.paste(im_tile,(250+(i*500),250+(self.ty*500)))
           
         im_tile=self.randtile(8)
-        self.im.paste(im_tile,(250+(self.tx*500),250+(self.ty*500)))
+        im.paste(im_tile,(250+(self.tx*500),250+(self.ty*500)))
        
         # filename=self.stroutfile[:-4]
         # enhancer = ImageEnhance.Brightness(self.im)
@@ -107,7 +109,12 @@ class map:
             # print(factor),  # 0.25 0.5 0.75 1.0 1.25 1.5 1.75 2.0
             # img_enhanced = enhancer.enhance(factor)
             # img_enhanced.save(filename+"_%03d.jpg" % (int(factor*100)) )
-        self.im.save(self.stroutfile)
+        
+        im= im.convert('L') # convert image to monochrome - this works
+        #im= im.convert('1') # convert image to black and white
+        #im= im.convert('RGB')
+        im = im.filter(ImageFilter.SMOOTH)
+        im.save(self.stroutfile,compress_level=1)
 
     def equalize(self,im):
         h = im.convert("L").histogram()
@@ -122,6 +129,19 @@ class map:
                 n = n + h[i+b]
         # map image through lookup table
         return im.point(lut*3)     
+    
+    def equalize_h(h):
+        lut = []
+        for b in range(0, len(h), 256):
+            # step size
+            step = reduce(operator.add, h[b:b+256]) / 255
+            # create equalization lookup table
+            n = 0
+            for i in range(256):
+                lut.append(n / step)
+                n = n + h[i+b]
+        return lut    
+        
         
     def loadtiles(self):
         os.chdir(self.tilespath)
@@ -132,7 +152,16 @@ class map:
                 self.edge.append(file)
             elif file.endswith(".jpg") and file.find("Base")>-1:
                 self.base.append(file)
+                
+    def histos(self):
+        os.chdir(self.tilespath)
+        for file in os.listdir(self.tilespath):
+            im=Image.open(self.tilespath+"/"+file)
+            print im.histogram()
+            
+        
 
-map1=map("/home/matt/projects/mapgen/test.jpg",5,5)
+map1=map("/home/matt/projects/mapgen/test.png",8,11)
 map1.loadtiles()
 map1.build()
+map1.histos()
